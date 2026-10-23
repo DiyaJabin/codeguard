@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: CodeGuard AI conservative serverless demo template. Deploy only with explicit approval.
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 15
+    MemorySize: 512
+    Environment:
+      Variables:
+        APP_ENV: cloud
+        AI_PROVIDER: mock
+        AWS_DEPLOY_ENABLED: 'false'
+        BEDROCK_ENABLED: 'false'
+Resources:
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: '$default'
+      CorsConfiguration: {AllowOrigins: ['https://example.invalid'], AllowMethods: ['GET','POST','DELETE']}
+  ReviewFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend
+      Handler: app.main.handler
+      Events:
+        CatchAll: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /{proxy+}, Method: ANY}}
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref ReviewsTable}
+  ReviewsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification: {PointInTimeRecoveryEnabled: false}
+      AttributeDefinitions: [{AttributeName: review_id, AttributeType: S}]
+      KeySchema: [{AttributeName: review_id, KeyType: HASH}]
+Outputs:
+  ApiUrl: {Value: !Sub 'https://${Api}.execute-api.${AWS::Region}.amazonaws.com'}
