@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🛡️ CodeGuard AI
+# 🛡️ CodeGuard
 
-### Cloud-native code review dashboard for Python and Java
+### Cloud-Native Automated Code Review Platform
 
 **Analyze source code · Explore findings · Track reviews · Understand code quality**
 
@@ -11,12 +11,14 @@
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![DynamoDB](https://img.shields.io/badge/Database-DynamoDB-4053D6?logo=amazondynamodb&logoColor=white)](https://aws.amazon.com/dynamodb/)
-[![AI mode](https://img.shields.io/badge/Analysis-Deterministic%20Mock-yellow)](#analysis-engine-and-limitations)
+[![Analysis](https://img.shields.io/badge/Analysis-Rule--Based-5661A6)](#rule-based-analysis-and-limitations)
 [![AWS deployment](https://img.shields.io/badge/AWS%20Deployment-Completed-brightgreen)](#live-application)
 
-**[🚀 Live Application](https://main.d72rx55ohyqrt.amplifyapp.com)** · **[🔌 API Health](https://fm503w4luf.execute-api.ap-south-1.amazonaws.com/health)** · **[📁 Source Repository](https://github.com/DiyaJabin/codeguard-ai)**
+**[🚀 Live Demo](https://main.d72rx55ohyqrt.amplifyapp.com)** · **[🔌 API Health](https://fm503w4luf.execute-api.ap-south-1.amazonaws.com/health)** · **[📁 Source Repository](https://github.com/DiyaJabin/codeguard-ai)**
 
 *BCSE355L — Cloud Architecture Design Mini Project*
+
+> **Repository naming:** Public-facing project name is **CodeGuard**. The GitHub repository, AWS stack, Lambda, and DynamoDB resources may still carry the previous `codeguard-ai` identifiers; these do not need to be renamed for the application to work.
 
 </div>
 
@@ -24,9 +26,9 @@
 
 ## Overview
 
-**CodeGuard AI** is a serverless, AWS-deployed developer tool that reviews Python and Java code for a focused set of potential code-quality, reliability, and security issues. Users can paste code or select a source file, view line-specific findings and suggested improvements, and explore saved reviews through a dashboard with history and analytics.
+**CodeGuard** is a serverless, AWS-deployed developer tool that reviews Python and Java code for a focused set of potential code-quality, reliability, and security issues. Users can paste code or select a source file, view line-specific findings and suggested improvements, and explore saved reviews through a dashboard with history and analytics.
 
-Its principal goal is to demonstrate a complete **frontend → API → serverless compute → cloud database** architecture using managed AWS services. The current analysis engine is **deterministic, rule-based mock analysis**; it does **not** call a large language model. Amazon Bedrock is intentionally disabled.
+Its principal goal is to demonstrate a complete **frontend → API → serverless compute → cloud database** architecture using managed AWS services. The deployed review engine uses **deterministic, rule-based source-text checks**. It is not powered by a machine-learning or generative AI model. Amazon Bedrock remains disabled. The internal provider is named `MockReviewProvider` for compatibility with the existing codebase.
 
 ## Live application
 
@@ -37,7 +39,7 @@ Its principal goal is to demonstrate a complete **frontend → API → serverles
 | **Health check** | https://fm503w4luf.execute-api.ap-south-1.amazonaws.com/health |
 | **AWS Region** | `ap-south-1` (Mumbai) |
 
-> **Demo and privacy notice:** The uploaded implementation does not include authentication or user-specific authorization. The API should be treated as a public demonstration endpoint, **not** a secure place to submit proprietary code, credentials, or personal data. Please avoid excessive requests; AWS usage may incur charges.
+> **Demo and privacy notice:** The reviewed implementation does not include authentication or user-specific authorization. The API should be treated as a public demonstration endpoint, **not** a secure place to submit proprietary code, credentials, or personal data. Please avoid excessive requests; AWS usage may incur charges.
 
 ## Features
 
@@ -47,6 +49,7 @@ Its principal goal is to demonstrate a complete **frontend → API → serverles
 - **Dashboard and analytics** — review totals, issue counts, severity breakdowns, language distribution, and issue categories.
 - **Responsive interface** — dark/light appearance and developer-oriented workspace.
 - **Cloud persistence** — DynamoDB stores review data in the deployed environment.
+- **Rule-based review engine** — identifies selected syntax and style patterns without compiling or executing submitted code.
 - **Safety-oriented analysis** — submitted source code is inspected as text, **never executed**.
 
 > Some UI elements in the current repository are display-only or incomplete (for example, the history search input). Automated browser-level tests are not yet included.
@@ -60,7 +63,7 @@ flowchart TD
     AMP -->|Browser sends API requests| APIGW[Amazon API Gateway / HTTP API]
     APIGW --> L[AWS Lambda / Python 3.12]
     L --> APP[FastAPI + Mangum]
-    APP --> MOCK[Deterministic Mock Review Engine]
+    APP --> RULES[Rule-Based Review Engine]
     APP --> DB[(Amazon DynamoDB)]
     L -.-> LOGS[Amazon CloudWatch Logs]
     SAM[AWS SAM / CloudFormation] -.-> APIGW
@@ -73,7 +76,7 @@ flowchart TD
 1. The user enters Python or Java code in the React frontend hosted on Amplify.
 2. The browser makes an HTTPS request to API Gateway.
 3. API Gateway routes the request to AWS Lambda; **Mangum** adapts the request to the **FastAPI** ASGI application.
-4. The mock review provider applies deterministic code-pattern checks and returns structured findings.
+4. The rule-based review provider (`MockReviewProvider` in the code) applies deterministic code-pattern checks and returns structured findings.
 5. The repository layer converts Python `float` values to DynamoDB-compatible `Decimal` values and persists the review in DynamoDB.
 6. The API returns JSON to the frontend, which displays the findings. History and analytics subsequently read saved data from DynamoDB.
 
@@ -102,7 +105,7 @@ flowchart TD
 | Lambda integration | Mangum |
 | Cloud data | DynamoDB, boto3 |
 | Legacy/local database files | SQLite / SQLAlchemy (local repository path currently not wired into review routes) |
-| Analysis | Deterministic Python/Java regex-pattern checks |
+| Analysis | Deterministic Python/Java source-pattern checks (`MockReviewProvider`) |
 | Infrastructure | AWS SAM, CloudFormation, API Gateway HTTP API, Lambda |
 | Hosting | AWS Amplify Hosting |
 | Testing | pytest / FastAPI TestClient (limited backend tests) |
@@ -134,7 +137,7 @@ Example JSON body for `POST /api/reviews`:
 
 The application accepts **Python** and **Java** and validates a maximum submitted code size of **100 KiB**. Do not submit real passwords, private tokens, or confidential code to the public demo.
 
-## Analysis engine and limitations
+## Rule-based analysis and limitations
 
 The current `MockReviewProvider` recognizes a limited set of source-text patterns, including:
 
@@ -142,7 +145,7 @@ The current `MockReviewProvider` recognizes a limited set of source-text pattern
 - Java empty `catch` blocks and direct `System.out.println` usage.
 - Credential-like assignments in either supported language.
 
-Results are labeled **demo analysis** and should be interpreted as suggestions, not verified vulnerabilities or comprehensive static analysis. The engine does **not** compile, execute, or understand code like a full compiler or LLM. **Amazon Bedrock integration is a disabled placeholder**; the project does not currently perform generative AI inference.
+The application may label these results **demo analysis** and should be interpreted as suggestions, not verified vulnerabilities or comprehensive static analysis. The engine does **not** compile or execute submitted code and does not provide comprehensive program analysis. **Amazon Bedrock integration is a disabled placeholder**; the project does not currently perform generative AI inference. The word “mock” in internal class names denotes the development-time rule-based provider, not an external AI service.
 
 ## Running and developing the project
 
@@ -244,7 +247,7 @@ codeguard-ai/
 └── README.md
 ```
 
-## Challenges solved
+## Deployment challenges solved
 
 **DynamoDB numeric conversion:** boto3/DynamoDB rejects ordinary Python `float` values during writes. The DynamoDB repository recursively converts floats to `Decimal` for storage, then converts DynamoDB `Decimal` objects to JSON-compatible `int`/`float` values when reading.
 
@@ -258,7 +261,7 @@ codeguard-ai/
 - [ ] Make the API base URL configurable through a Vite environment variable.
 - [ ] Add browser E2E testing and AWS integration tests.
 - [ ] Improve UI controls, error handling, and data pagination/search.
-- [ ] Consider optional Bedrock-powered reviews **only after explicit model access, security, and cost review**.
+- [ ] Optionally add a separate AI-assisted provider later, **only after explicit model access, security, privacy, and cost review**.
 
 ## Educational context
 
@@ -268,8 +271,8 @@ Built as a **BCSE355L Cloud Architecture Design** mini-project, focused on under
 
 <div align="center">
 
-**CodeGuard AI** · [Live Demo](https://main.d72rx55ohyqrt.amplifyapp.com) · [GitHub](https://github.com/DiyaJabin/codeguard-ai)
+**CodeGuard** · [Live Demo](https://main.d72rx55ohyqrt.amplifyapp.com) · [GitHub](https://github.com/DiyaJabin/codeguard-ai)
 
-*Cloud-native architecture, transparent demo analysis, and room to grow.*
+*Serverless code review with transparent, rule-based analysis.*
 
 </div>
